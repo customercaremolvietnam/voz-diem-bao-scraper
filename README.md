@@ -1,2 +1,4 @@
-# voz-diem-bao-scraper
-Script lấy bài mới từ VOZ Điểm báo
+voz-diem-bao-telegram/
+├── package.json
+├── main.js
+└── README.md
