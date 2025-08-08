@@ -1,65 +1,57 @@
-const Parser = require('rss-parser');
-const axios = require('axios');
-const sources = require('./sources');
+import axios from "axios";
+import Parser from "rss-parser";
 
-const parser = new Parser();
+const TELEGRAM_TOKEN = "8496507275:AAFtwUbco8yIPDlzEWdjtvSUqH2fSpvrYRs";
+const TELEGRAM_CHAT_ID = "-1002855732895";
 
-// ======= CẤU HÌNH TELEGRAM =======
-const TELEGRAM_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'; // thay token bot
-const CHAT_ID = 'YOUR_CHAT_ID'; // thay chat_id Telegram
+// Danh sách RSS feed (nguồn tin bạn muốn lấy)
+const RSS_FEEDS = [
+  "https://vnexpress.net/rss/tin-moi-nhat.rss",
+  "https://thanhnien.vn/rss/home.rss",
+  "https://tuoitre.vn/rss/tin-moi-nhat.rss"
+];
 
-// ======= THỜI GIAN GIỚI HẠN LẤY TIN MỚI (tính theo phút) =======
-const TIME_LIMIT_MINUTES = 60; // lấy tin trong vòng 1 giờ qua
+async function fetchRSS() {
+  const parser = new Parser();
+  let allItems = [];
+
+  for (const url of RSS_FEEDS) {
+    try {
+      const feed = await parser.parseURL(url);
+      allItems = allItems.concat(feed.items);
+    } catch (err) {
+      console.error(`Lỗi khi lấy RSS từ ${url}:`, err.message);
+    }
+  }
+
+  return allItems;
+}
+
+async function sendToTelegram(message) {
+  try {
+    await axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+      chat_id: TELEGRAM_CHAT_ID,
+      text: message,
+      parse_mode: "HTML"
+    });
+  } catch (err) {
+    console.error("Lỗi gửi Telegram:", err.message);
+  }
+}
 
 (async () => {
-    console.log('Bắt đầu lấy tin...');
+  console.log("Đang lấy tin...");
+  const items = await fetchRSS();
 
-    const now = new Date();
-    let allNews = [];
+  if (!items.length) {
+    console.log("Không tìm thấy tin nào.");
+    return;
+  }
 
-    for (const source of sources) {
-        try {
-            console.log(`Đang lấy RSS từ: ${source.name}`);
-            const feed = await parser.parseURL(source.url);
+  for (const item of items.slice(0, 5)) { // chỉ gửi 5 tin mới nhất
+    const message = `<b>${item.title}</b>\n${item.link}`;
+    await sendToTelegram(message);
+  }
 
-            feed.items.forEach(item => {
-                const pubDate = new Date(item.pubDate || item.isoDate || now);
-                const diffMinutes = (now - pubDate) / (1000 * 60);
-
-                if (diffMinutes <= TIME_LIMIT_MINUTES) {
-                    allNews.push({
-                        source: source.name,
-                        title: item.title,
-                        link: item.link,
-                        pubDate: pubDate.toLocaleString('vi-VN')
-                    });
-                }
-            });
-
-        } catch (err) {
-            console.error(`❌ Lỗi lấy tin từ ${source.name}: ${err.message}`);
-        }
-    }
-
-    if (allNews.length === 0) {
-        console.log('Không tìm thấy tin mới.');
-        return;
-    }
-
-    // Gửi từng tin lên Telegram
-    for (const news of allNews) {
-        const message = `📰 *${news.source}*\n${news.title}\n${news.link}\n🕒 ${news.pubDate}`;
-        try {
-            await axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-                chat_id: CHAT_ID,
-                text: message,
-                parse_mode: 'Markdown'
-            });
-            console.log(`✅ Đã gửi: ${news.title}`);
-        } catch (err) {
-            console.error(`❌ Lỗi gửi Telegram: ${err.message}`);
-        }
-    }
-
-    console.log('Hoàn tất.');
+  console.log("Đã gửi xong!");
 })();
