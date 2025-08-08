@@ -1,10 +1,12 @@
 {
-  "name": "voz-diem-bao-telegram",
+  "name": "telegram-news-bot",
   "version": "1.0.0",
-  "description": "Scraper VOZ Điểm Báo gửi tin mới qua Telegram",
+  "description": "Bot gửi tin tức tới Telegram",
   "main": "main.js",
   "type": "module",
-  "scripts": { "start": "node main.js" },
+  "scripts": {
+    "start": "node main.js"
+  },
   "dependencies": {
     "axios": "^1.6.0",
     "cheerio": "^1.0.0-rc.12"
