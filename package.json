@@ -1,7 +1,11 @@
 {
-  "name": "voz-diem-bao-crawler",
+  "name": "voz-diem-bao-telegram",
   "version": "1.0.0",
+  "description": "Lấy bài mới từ VOZ Điểm Báo và gửi Telegram",
+  "main": "main.js",
+  "type": "module",
   "dependencies": {
-    "crawlee": "^2.0.0"
+    "axios": "^1.6.7",
+    "cheerio": "^1.0.0-rc.12"
   }
 }
