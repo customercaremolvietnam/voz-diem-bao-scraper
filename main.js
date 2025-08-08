@@ -1,41 +1,44 @@
-import fetch from 'node-fetch';
+import axios from 'axios';
+import cheerio from 'cheerio';
 
-// Token và chat_id Telegram
 const TELEGRAM_TOKEN = '8496507275:AAFtwUbco8yIPDlzEWdjtvSUqH2fSpvrYRs';
-const CHAT_ID = '@newsvoz';
+const CHAT_ID = '-1002855732895';
 
-// Hàm gửi tin nhắn sang Telegram
-async function sendToTelegram(message) {
-    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
-    const params = {
-        chat_id: CHAT_ID,
-        text: message,
-        parse_mode: 'HTML'
-    };
-
+async function scrapeNews() {
     try {
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(params)
+        const { data } = await axios.get('https://voz.vn/forums/diem-bao.33/');
+        const $ = cheerio.load(data);
+
+        const posts = [];
+        $('.structItem--thread').each((_, el) => {
+            const title = $(el).find('.structItem-title').text().trim();
+            const link = 'https://voz.vn' + $(el).find('.structItem-title a').attr('href');
+            if (title && link) posts.push({ title, link });
         });
-        const data = await res.json();
-        console.log('Telegram response:', data);
+        return posts.slice(0, 5); // Chọn 5 bài mới nhất
     } catch (err) {
-        console.error('Error sending to Telegram:', err);
+        console.error('Error scraping VOZ:', err.message);
+        return [];
     }
 }
 
-// Ví dụ: lấy tin từ 1 RSS feed và gửi
-async function main() {
-    const newsList = [
-        'Tin số 1: Đây là tin test gửi từ Apify/GitHub sang Telegram.',
-        'Tin số 2: Bạn có thể thay bằng dữ liệu crawl thực tế.'
-    ];
-
+async function sendToTelegram(newsList) {
     for (const news of newsList) {
-        await sendToTelegram(news);
+        const text = `📰 *${news.title}*\n${news.link}`;
+        await axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+            chat_id: CHAT_ID,
+            text: text,
+            parse_mode: 'Markdown'
+        });
     }
 }
 
-main();
+(async () => {
+    const newsList = await scrapeNews();
+    if (newsList.length) {
+        await sendToTelegram(newsList);
+        console.log(`Sent ${newsList.length} news items to Telegram.`);
+    } else {
+        console.log('No news found.');
+    }
+})();
