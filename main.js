@@ -1,45 +1,65 @@
-import axios from 'axios';
-import cheerio from 'cheerio';
+const Parser = require('rss-parser');
+const axios = require('axios');
+const sources = require('./sources');
 
-const TELEGRAM_TOKEN = '8496507275:AAFtwUbco8yIPDlzEWdjtvSUqH2fSpvrYRs';
-const CHAT_ID = '-1002855732895';
+const parser = new Parser();
 
-async function scrapeNews() {
-    try {
-        const { data } = await axios.get('https://vnexpress.net/rss/tin-moi-nhat.rss');
-        const $ = cheerio.load(data);
+// ======= CẤU HÌNH TELEGRAM =======
+const TELEGRAM_TOKEN = 'YOUR_TELEGRAM_BOT_TOKEN'; // thay token bot
+const CHAT_ID = 'YOUR_CHAT_ID'; // thay chat_id Telegram
 
-        const posts = [];
-        $('.structItem--thread').each((_, el) => {
-            const title = $(el).find('.structItem-title').text().trim();
-            const link = 'https://voz.vn' + $(el).find('.structItem-title a').attr('href');
-            if (title && link) posts.push({ title, link });
-        });
-        return posts.slice(0, 5); // Chọn 5 bài mới nhất
-    } catch (err) {
-        console.error('Error scraping VOZ:', err.message);
-        return [];
-    }
-}
-
-async function sendToTelegram(newsList) {
-    for (const news of newsList) {
-        const text = `📰 *${news.title}*\n${news.link}`;
-        await axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
-            chat_id: CHAT_ID,
-            text: text,
-            parse_mode: 'Markdown'
-        });
-    }
-}
+// ======= THỜI GIAN GIỚI HẠN LẤY TIN MỚI (tính theo phút) =======
+const TIME_LIMIT_MINUTES = 60; // lấy tin trong vòng 1 giờ qua
 
 (async () => {
-    const newsList = await scrapeNews();
-    if (newsList.length) {
-        await sendToTelegram(newsList);
-        console.log(`Sent ${newsList.length} news items to Telegram.`);
-    } else {
-        console.log('No news found.');
-    }
-})();
+    console.log('Bắt đầu lấy tin...');
 
+    const now = new Date();
+    let allNews = [];
+
+    for (const source of sources) {
+        try {
+            console.log(`Đang lấy RSS từ: ${source.name}`);
+            const feed = await parser.parseURL(source.url);
+
+            feed.items.forEach(item => {
+                const pubDate = new Date(item.pubDate || item.isoDate || now);
+                const diffMinutes = (now - pubDate) / (1000 * 60);
+
+                if (diffMinutes <= TIME_LIMIT_MINUTES) {
+                    allNews.push({
+                        source: source.name,
+                        title: item.title,
+                        link: item.link,
+                        pubDate: pubDate.toLocaleString('vi-VN')
+                    });
+                }
+            });
+
+        } catch (err) {
+            console.error(`❌ Lỗi lấy tin từ ${source.name}: ${err.message}`);
+        }
+    }
+
+    if (allNews.length === 0) {
+        console.log('Không tìm thấy tin mới.');
+        return;
+    }
+
+    // Gửi từng tin lên Telegram
+    for (const news of allNews) {
+        const message = `📰 *${news.source}*\n${news.title}\n${news.link}\n🕒 ${news.pubDate}`;
+        try {
+            await axios.post(`https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`, {
+                chat_id: CHAT_ID,
+                text: message,
+                parse_mode: 'Markdown'
+            });
+            console.log(`✅ Đã gửi: ${news.title}`);
+        } catch (err) {
+            console.error(`❌ Lỗi gửi Telegram: ${err.message}`);
+        }
+    }
+
+    console.log('Hoàn tất.');
+})();
