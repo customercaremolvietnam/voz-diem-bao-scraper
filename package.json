@@ -1,0 +1,7 @@
+{
+  "name": "voz-diem-bao-crawler",
+  "version": "1.0.0",
+  "dependencies": {
+    "crawlee": "^2.0.0"
+  }
+}
