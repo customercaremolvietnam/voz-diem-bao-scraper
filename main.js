@@ -1,57 +1,41 @@
-import axios from "axios";
-import cheerio from "cheerio";
+import fetch from 'node-fetch';
 
-const TELEGRAM_TOKEN = "8496507275:AAFtwUbco8yIPDlzEWdjtvSUqH2fSpvrYRs";
-const TELEGRAM_CHAT_ID = "newsvoz"; // hoặc chat_id thật (vd: -1001234567890)
+// Token và chat_id Telegram
+const TELEGRAM_TOKEN = '8496507275:AAFtwUbco8yIPDlzEWdjtvSUqH2fSpvrYRs';
+const CHAT_ID = '@newsvoz';
 
-async function getVozDiemBao() {
-  try {
-    // Gọi qua Apify proxy để tránh bị chặn Cloudflare
-    const response = await axios.get("https://voz.vn/f/diem-bao.33/", {
-      headers: {
-        "User-Agent":
-          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36",
-      },
-    });
+// Hàm gửi tin nhắn sang Telegram
+async function sendToTelegram(message) {
+    const url = `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`;
+    const params = {
+        chat_id: CHAT_ID,
+        text: message,
+        parse_mode: 'HTML'
+    };
 
-    const $ = cheerio.load(response.data);
-    let posts = [];
-
-    $(".structItem--thread").each((i, el) => {
-      const title = $(el).find(".structItem-title a").first().text().trim();
-      const link =
-        "https://voz.vn" +
-        $(el).find(".structItem-title a").first().attr("href");
-      posts.push({ title, link });
-    });
-
-    return posts;
-  } catch (error) {
-    console.error("Lỗi lấy dữ liệu VOZ:", error.message);
-    return [];
-  }
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(params)
+        });
+        const data = await res.json();
+        console.log('Telegram response:', data);
+    } catch (err) {
+        console.error('Error sending to Telegram:', err);
+    }
 }
 
-async function sendToTelegram(posts) {
-  for (let post of posts) {
-    const text = `📰 *${post.title}*\n${post.link}`;
-    await axios.post(
-      `https://api.telegram.org/bot${TELEGRAM_TOKEN}/sendMessage`,
-      {
-        chat_id: TELEGRAM_CHAT_ID,
-        text: text,
-        parse_mode: "Markdown",
-      }
-    );
-  }
+// Ví dụ: lấy tin từ 1 RSS feed và gửi
+async function main() {
+    const newsList = [
+        'Tin số 1: Đây là tin test gửi từ Apify/GitHub sang Telegram.',
+        'Tin số 2: Bạn có thể thay bằng dữ liệu crawl thực tế.'
+    ];
+
+    for (const news of newsList) {
+        await sendToTelegram(news);
+    }
 }
 
-(async () => {
-  const posts = await getVozDiemBao();
-  if (posts.length > 0) {
-    await sendToTelegram(posts);
-    console.log(`✅ Đã gửi ${posts.length} bài mới`);
-  } else {
-    console.log("⚠️ Không lấy được bài nào");
-  }
-})();
+main();
