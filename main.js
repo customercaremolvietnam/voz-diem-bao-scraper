@@ -6,7 +6,7 @@ const CHAT_ID = '-1002855732895';
 
 async function scrapeNews() {
     try {
-        const { data } = await axios.get('https://voz.vn/forums/diem-bao.33/');
+        const { data } = await axios.get('https://vnexpress.net/rss/tin-moi-nhat.rss');
         const $ = cheerio.load(data);
 
         const posts = [];
@@ -42,3 +42,4 @@ async function sendToTelegram(newsList) {
         console.log('No news found.');
     }
 })();
+
