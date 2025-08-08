@@ -1,13 +1,12 @@
-{
-  "name": "telegram-newsvoz",
-  "version": "1.0.0",
-  "description": "Gửi tin tức từ Apify/GitHub sang Telegram",
-  "main": "main.js",
-  "type": "module",
-  "scripts": {
-    "start": "node main.js"
-  },
-  "dependencies": {
-    "node-fetch": "^3.3.2"
-  }
-}
+# Telegram Newsvoz Sender
+
+Script này sẽ gửi tin tức từ GitHub/Apify sang Telegram channel `@newsvoz`.
+
+## Cấu hình
+- Token Telegram: `8496507275:AAFtwUbco8yIPDlzEWdjtvSUqH2fSpvrYRs`
+- Chat ID: `@newsvoz`
+
+## Chạy thử
+```bash
+npm install
+npm start
